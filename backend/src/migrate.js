@@ -156,6 +156,27 @@ const migrate = async () => {
       )
     `);
 
+    // Transcriptions table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS transcriptions (
+        id SERIAL PRIMARY KEY,
+        video_id INTEGER REFERENCES videos(id) ON DELETE CASCADE,
+        full_text TEXT,
+        segments JSONB,
+        words JSONB,
+        language VARCHAR(10) DEFAULT 'en',
+        status VARCHAR(50) DEFAULT 'pending',
+        error_message TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Add default_settings column to projects if not exists
+    await client.query(`
+      ALTER TABLE projects ADD COLUMN IF NOT EXISTS default_settings JSONB
+    `);
+
     await client.query('COMMIT');
     console.log('Migration completed successfully');
   } catch (error) {

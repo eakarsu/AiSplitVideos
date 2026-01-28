@@ -7,6 +7,7 @@ const execAsync = promisify(exec);
 const db = require('../db');
 const authMiddleware = require('../middleware/auth');
 const VideoSplitter = require('../services/videoSplitter');
+const { emitJobProgress, emitJobCompleted, emitJobFailed } = require('../services/socketService');
 
 const router = express.Router();
 const UPLOADS_DIR = path.join(__dirname, '../../uploads');
@@ -223,10 +224,12 @@ async function processVideoSplit(jobId, job, userId) {
   try {
     console.log(`Starting video split job ${jobId}`);
 
-    // Progress update helper
-    const updateProgress = async (progress, status) => {
+    // Progress update helper with WebSocket emission
+    const updateProgress = async (progress, message) => {
       await db.query('UPDATE split_jobs SET progress = $1 WHERE id = $2', [progress, jobId]);
-      console.log(`Job ${jobId}: ${progress}% - ${status}`);
+      console.log(`Job ${jobId}: ${progress}% - ${message}`);
+      // Emit WebSocket event
+      emitJobProgress(jobId, { progress, status: 'processing', message });
     };
 
     // Determine video path
@@ -243,10 +246,12 @@ async function processVideoSplit(jobId, job, userId) {
         await updateProgress(20, 'Download complete, starting split...');
       } catch (downloadError) {
         console.error('YouTube download failed:', downloadError);
+        const errorMsg = `YouTube download failed: ${downloadError.message}`;
         await db.query(
           `UPDATE split_jobs SET status = 'failed', error_message = $1 WHERE id = $2`,
-          [`YouTube download failed: ${downloadError.message}`, jobId]
+          [errorMsg, jobId]
         );
+        emitJobFailed(jobId, { error: errorMsg });
         return;
       }
     } else if (job.file_path && fs.existsSync(job.file_path)) {
@@ -256,18 +261,22 @@ async function processVideoSplit(jobId, job, userId) {
       videoPath = path.join(__dirname, '../../', job.file_url);
     } else {
       // No valid video file
+      const errorMsg = 'No valid video file found';
       await db.query(
         `UPDATE split_jobs SET status = 'failed', error_message = $1 WHERE id = $2`,
-        ['No valid video file found', jobId]
+        [errorMsg, jobId]
       );
+      emitJobFailed(jobId, { error: errorMsg });
       return;
     }
 
     if (!fs.existsSync(videoPath)) {
+      const errorMsg = `Video file not found: ${videoPath}`;
       await db.query(
         `UPDATE split_jobs SET status = 'failed', error_message = $1 WHERE id = $2`,
-        [`Video file not found: ${videoPath}`, jobId]
+        [errorMsg, jobId]
       );
+      emitJobFailed(jobId, { error: errorMsg });
       return;
     }
 
@@ -285,13 +294,15 @@ async function processVideoSplit(jobId, job, userId) {
     // Update progress callback (scale 0-100 from splitter to 20-100 if YouTube, else 0-100)
     const progressOffset = isYouTubeId ? 20 : 0;
     const progressScale = isYouTubeId ? 0.8 : 1;
-    const onProgress = async (progress, status) => {
+    const onProgress = async (progress, message) => {
       const scaledProgress = Math.round(progressOffset + (progress * progressScale));
       await db.query(
         'UPDATE split_jobs SET progress = $1 WHERE id = $2',
         [scaledProgress, jobId]
       );
-      console.log(`Job ${jobId}: ${scaledProgress}% - ${status}`);
+      console.log(`Job ${jobId}: ${scaledProgress}% - ${message}`);
+      // Emit WebSocket event
+      emitJobProgress(jobId, { progress: scaledProgress, status: 'processing', message });
     };
 
     // Run the split
@@ -330,6 +341,8 @@ async function processVideoSplit(jobId, job, userId) {
     );
 
     console.log(`Job ${jobId} completed: ${results.clips.length} clips created`);
+    // Emit WebSocket completion event
+    emitJobCompleted(jobId, { clipsCount: results.clips.length });
 
   } catch (error) {
     console.error(`Job ${jobId} failed:`, error);
@@ -339,6 +352,8 @@ async function processVideoSplit(jobId, job, userId) {
        WHERE id = $2`,
       [error.message, jobId]
     );
+    // Emit WebSocket failure event
+    emitJobFailed(jobId, { error: error.message });
   }
 }
 

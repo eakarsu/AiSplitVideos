@@ -20,9 +20,12 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 500 * 1024 * 1024 }, // 500MB limit
+  limits: { fileSize: 5 * 1024 * 1024 * 1024 }, // 5GB limit
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo'];
+    const allowedTypes = [
+      'video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo',
+      'video/x-matroska', 'video/x-ms-wmv', 'video/x-m4v', 'video/mpeg'
+    ];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {

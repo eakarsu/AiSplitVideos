@@ -9,7 +9,7 @@ const seed = async () => {
     await client.query('BEGIN');
 
     // Clear existing data
-    await client.query('TRUNCATE users, projects, videos, split_jobs, clips, templates, ai_analysis, exports RESTART IDENTITY CASCADE');
+    await client.query('TRUNCATE users, projects, videos, split_jobs, clips, templates, ai_analysis, exports, transcriptions RESTART IDENTITY CASCADE');
 
     // Create demo user
     const hashedPassword = await bcrypt.hash(process.env.DEMO_PASSWORD || 'demo123456', 10);

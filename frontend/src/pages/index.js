@@ -1,0 +1,11 @@
+export { default as LoginPage } from './LoginPage';
+export { default as Dashboard } from './Dashboard';
+export { default as VideosPage } from './VideosPage';
+export { default as ProjectsPage } from './ProjectsPage';
+export { default as ProjectDetailPage } from './ProjectDetailPage';
+export { default as ClipsPage } from './ClipsPage';
+export { default as SplitJobsPage } from './SplitJobsPage';
+export { default as TemplatesPage } from './TemplatesPage';
+export { default as AIAnalysisPage } from './AIAnalysisPage';
+export { default as ExportsPage } from './ExportsPage';
+export { default as FeaturePage } from './FeaturePage';

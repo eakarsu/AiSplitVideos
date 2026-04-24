@@ -8,6 +8,8 @@ import { LoadingSpinner } from '../components/common';
 import { EnhancedVideoPlayer } from '../components/video';
 import { DetailModal, CreateModal, SplitVideoModal } from '../components/modals';
 import { BatchUploadModal } from '../components/upload';
+import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 
 const VideosPage = () => {
   const [videos, setVideos] = useState([]);
@@ -19,6 +21,8 @@ const VideosPage = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const navigate = useNavigate();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const fetchVideos = async () => {
     try {
@@ -55,13 +59,16 @@ const VideosPage = () => {
   };
 
   const handleDelete = async (video) => {
+    const confirmed = await confirm('Delete Video', `Are you sure you want to delete "${video.title}"?`);
+    if (!confirmed) return;
     try {
       await axios.delete(`${API_URL}/videos/${video.id}`);
       setSelectedVideo(null);
+      toast.success('Video deleted');
       fetchVideos();
     } catch (error) {
       console.error('Delete video error:', error);
-      alert('Failed to delete video');
+      toast.error('Failed to delete video');
     }
   };
 

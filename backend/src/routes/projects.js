@@ -7,7 +7,10 @@ const router = express.Router();
 // Get all projects
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const { status, limit = 50, offset = 0 } = req.query;
+    const { status, search, sort_by = 'created_at', sort_order = 'DESC', limit = 50, offset = 0 } = req.query;
+    const validSorts = ['name', 'video_count', 'created_at', 'updated_at', 'status'];
+    const sortCol = validSorts.includes(sort_by) ? sort_by : 'created_at';
+    const order = sort_order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
     let query = 'SELECT * FROM projects WHERE user_id = $1';
     const params = [req.user.id];
@@ -19,7 +22,13 @@ router.get('/', authMiddleware, async (req, res) => {
       paramIndex++;
     }
 
-    query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    if (search) {
+      query += ` AND (name ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`;
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    query += ` ORDER BY ${sortCol} ${order} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(limit, offset);
 
     const result = await db.query(query, params);
@@ -216,6 +225,34 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Delete project error:', error);
     res.status(500).json({ error: 'Failed to delete project' });
+  }
+});
+
+// Bulk delete projects
+router.post('/bulk/delete', authMiddleware, async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !ids.length) return res.status(400).json({ error: 'No IDs provided' });
+    await db.query('DELETE FROM projects WHERE id = ANY($1) AND user_id = $2', [ids, req.user.id]);
+    res.json({ message: `${ids.length} projects deleted` });
+  } catch (error) {
+    console.error('Bulk delete projects error:', error);
+    res.status(500).json({ error: 'Failed to bulk delete' });
+  }
+});
+
+// Export projects CSV
+router.get('/export/csv', authMiddleware, async (req, res) => {
+  try {
+    const { generateCSV } = require('../utils/csvExporter');
+    const result = await db.query('SELECT id, name, description, status, video_count, created_at FROM projects WHERE user_id = $1 ORDER BY created_at DESC', [req.user.id]);
+    const csv = generateCSV(result.rows);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=projects.csv');
+    res.send(csv);
+  } catch (error) {
+    console.error('Export CSV error:', error);
+    res.status(500).json({ error: 'Failed to export CSV' });
   }
 });
 

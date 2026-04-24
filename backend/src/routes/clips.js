@@ -7,7 +7,10 @@ const router = express.Router();
 // Get all clips
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const { video_id, split_job_id, status, limit = 50, offset = 0 } = req.query;
+    const { video_id, split_job_id, status, search, sort_by = 'created_at', sort_order = 'DESC', limit = 50, offset = 0 } = req.query;
+    const validSorts = ['title', 'duration', 'ai_score', 'created_at', 'start_time'];
+    const sortCol = validSorts.includes(sort_by) ? sort_by : 'created_at';
+    const order = sort_order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
     let query = `
       SELECT c.*, v.title as video_title
@@ -36,7 +39,13 @@ router.get('/', authMiddleware, async (req, res) => {
       paramIndex++;
     }
 
-    query += ` ORDER BY c.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    if (search) {
+      query += ` AND (c.title ILIKE $${paramIndex} OR c.description ILIKE $${paramIndex})`;
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    query += ` ORDER BY c.${sortCol} ${order} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(limit, offset);
 
     const result = await db.query(query, params);
@@ -155,6 +164,34 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Delete clip error:', error);
     res.status(500).json({ error: 'Failed to delete clip' });
+  }
+});
+
+// Bulk delete clips
+router.post('/bulk/delete', authMiddleware, async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !ids.length) return res.status(400).json({ error: 'No IDs provided' });
+    await db.query('DELETE FROM clips WHERE id = ANY($1) AND user_id = $2', [ids, req.user.id]);
+    res.json({ message: `${ids.length} clips deleted` });
+  } catch (error) {
+    console.error('Bulk delete clips error:', error);
+    res.status(500).json({ error: 'Failed to bulk delete clips' });
+  }
+});
+
+// Export clips CSV
+router.get('/export/csv', authMiddleware, async (req, res) => {
+  try {
+    const { generateCSV } = require('../utils/csvExporter');
+    const result = await db.query('SELECT id, title, start_time, end_time, duration, ai_score, status, created_at FROM clips WHERE user_id = $1 ORDER BY created_at DESC', [req.user.id]);
+    const csv = generateCSV(result.rows);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=clips.csv');
+    res.send(csv);
+  } catch (error) {
+    console.error('Export CSV error:', error);
+    res.status(500).json({ error: 'Failed to export CSV' });
   }
 });
 

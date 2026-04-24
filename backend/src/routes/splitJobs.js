@@ -62,7 +62,10 @@ const activeJobs = new Map();
 // Get all split jobs
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const { video_id, status, limit = 50, offset = 0 } = req.query;
+    const { video_id, status, search, sort_by = 'created_at', sort_order = 'DESC', limit = 50, offset = 0 } = req.query;
+    const validSorts = ['name', 'split_type', 'status', 'progress', 'clips_generated', 'created_at'];
+    const sortCol = validSorts.includes(sort_by) ? sort_by : 'created_at';
+    const order = sort_order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
     let query = `
       SELECT sj.*, v.title as video_title
@@ -85,7 +88,13 @@ router.get('/', authMiddleware, async (req, res) => {
       paramIndex++;
     }
 
-    query += ` ORDER BY sj.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    if (search) {
+      query += ` AND (sj.name ILIKE $${paramIndex} OR sj.split_type ILIKE $${paramIndex})`;
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    query += ` ORDER BY sj.${sortCol} ${order} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(limit, offset);
 
     const result = await db.query(query, params);

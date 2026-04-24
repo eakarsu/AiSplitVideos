@@ -64,6 +64,9 @@ const LoginPage = () => {
           <button type="submit" className="btn btn-primary btn-login" disabled={loading}>
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
+          <p style={{ textAlign: 'center', marginTop: 16 }}>
+            <a href="/forgot-password" style={{ color: '#6366f1', textDecoration: 'none' }}>Forgot Password?</a>
+          </p>
         </form>
       </div>
     </div>

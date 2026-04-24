@@ -1,18 +1,27 @@
 import React, { useState } from 'react';
 import {
-  X, Play, Scissors, Eye, Trash2, Plus, Film, Download, Share2, Zap, Brain, FileText
+  X, Play, Scissors, Eye, Trash2, Plus, Film, Download, Share2, Zap, Brain, FileText, Edit3
 } from 'lucide-react';
 import { formatDuration, formatFileSize, formatDate } from '../../utils/formatters';
 import { TranscriptionPanel } from '../transcription';
+import { useConfirm } from '../../context/ConfirmContext';
 
-const DetailModal = ({ isOpen, onClose, title, item, type, onAction, onPlay, onDelete }) => {
+const DetailModal = ({ isOpen, onClose, title, item, type, onAction, onPlay, onDelete, onEdit }) => {
   const [activeTab, setActiveTab] = useState('details');
+  const confirm = useConfirm();
 
   if (!isOpen || !item) return null;
 
-  const handleDelete = () => {
-    if (window.confirm(`Are you sure you want to delete "${item.title || item.name}"?`)) {
-      onDelete?.(item);
+  const handleDelete = async () => {
+    const confirmed = await confirm('Delete Item', `Are you sure you want to delete "${item.title || item.name}"?`);
+    if (confirmed) onDelete?.(item);
+  };
+
+  const handleEdit = () => {
+    if (onEdit) {
+      onEdit(item);
+    } else {
+      onAction?.('edit');
     }
   };
 
@@ -45,7 +54,7 @@ const DetailModal = ({ isOpen, onClose, title, item, type, onAction, onPlay, onD
             </div>
             <div className="detail-actions">
               <button className="btn btn-primary" onClick={() => onAction?.('view-videos')}><Eye size={18} /> View Videos</button>
-              <button className="btn btn-secondary" onClick={() => onAction?.('add-video')}><Plus size={18} /> Add Video</button>
+              <button className="btn btn-secondary" onClick={handleEdit}><Edit3 size={18} /> Edit</button>
               <button className="btn btn-danger" onClick={handleDelete}><Trash2 size={18} /> Delete</button>
             </div>
           </>
@@ -110,6 +119,7 @@ const DetailModal = ({ isOpen, onClose, title, item, type, onAction, onPlay, onD
               {(item.split_job_count > 0 || item.clips_count > 0) && (
                 <button className="btn btn-secondary" onClick={() => onAction?.('view-clips')}><Film size={18} /> View Clips ({item.clips_count || 0})</button>
               )}
+              <button className="btn btn-secondary" onClick={handleEdit}><Edit3 size={18} /> Edit</button>
               <button className="btn btn-danger" onClick={handleDelete}><Trash2 size={18} /> Delete</button>
               <button className="btn btn-secondary" onClick={() => setActiveTab('transcription')}><FileText size={18} /> Transcription</button>
             </div>
@@ -142,6 +152,7 @@ const DetailModal = ({ isOpen, onClose, title, item, type, onAction, onPlay, onD
             <div className="detail-actions">
               <button className="btn btn-primary" onClick={() => onPlay?.(item)}><Play size={18} /> Play</button>
               <button className="btn btn-secondary" onClick={() => onAction?.('export')}><Download size={18} /> Export</button>
+              <button className="btn btn-secondary" onClick={handleEdit}><Edit3 size={18} /> Edit</button>
               <button className="btn btn-danger" onClick={handleDelete}><Trash2 size={18} /> Delete</button>
             </div>
           </>
@@ -173,6 +184,7 @@ const DetailModal = ({ isOpen, onClose, title, item, type, onAction, onPlay, onD
               {item.status === 'pending' && <button className="btn btn-primary" onClick={() => onAction?.('start')}><Play size={18} /> Start Job</button>}
               {item.status === 'completed' && <button className="btn btn-primary" onClick={() => onAction?.('view-clips')}><Film size={18} /> View Clips</button>}
               {item.status === 'processing' && <button className="btn btn-secondary" disabled><Zap size={18} /> In Progress</button>}
+              <button className="btn btn-secondary" onClick={handleEdit}><Edit3 size={18} /> Edit</button>
               <button className="btn btn-danger" onClick={handleDelete}><Trash2 size={18} /> Delete</button>
             </div>
           </>
@@ -195,7 +207,7 @@ const DetailModal = ({ isOpen, onClose, title, item, type, onAction, onPlay, onD
             </div>
             <div className="detail-actions">
               <button className="btn btn-primary" onClick={() => onAction?.('use')}><Zap size={18} /> Use Template</button>
-              <button className="btn btn-secondary"><Share2 size={18} /> Duplicate</button>
+              <button className="btn btn-secondary" onClick={handleEdit}><Edit3 size={18} /> Edit</button>
               <button className="btn btn-danger" onClick={handleDelete}><Trash2 size={18} /> Delete</button>
             </div>
           </>
@@ -219,8 +231,8 @@ const DetailModal = ({ isOpen, onClose, title, item, type, onAction, onPlay, onD
             </div>
             <div className="detail-actions">
               {item.status === 'completed' && <button className="btn btn-primary"><Eye size={18} /> View Results</button>}
-              {item.status === 'processing' && <button className="btn btn-secondary" disabled><Zap size={18} /> In Progress</button>}
               <button className="btn btn-secondary" onClick={() => onAction?.('rerun')}><Brain size={18} /> Run Again</button>
+              <button className="btn btn-secondary" onClick={handleEdit}><Edit3 size={18} /> Edit</button>
               <button className="btn btn-danger" onClick={handleDelete}><Trash2 size={18} /> Delete</button>
             </div>
           </>
@@ -245,13 +257,53 @@ const DetailModal = ({ isOpen, onClose, title, item, type, onAction, onPlay, onD
                 </div>
               ))}
               {renderField('Settings', item.settings ? <pre className="detail-json">{JSON.stringify(item.settings, null, 2)}</pre> : '-', true)}
-              {renderField('File URL', item.file_url || '-')}
               {renderField('Completed', formatDate(item.completed_at))}
               {renderField('Created', formatDate(item.created_at))}
             </div>
             <div className="detail-actions">
               {item.status === 'completed' && <button className="btn btn-primary"><Download size={18} /> Download</button>}
-              {item.status === 'processing' && <button className="btn btn-secondary" disabled><Zap size={18} /> In Progress</button>}
+              <button className="btn btn-secondary" onClick={handleEdit}><Edit3 size={18} /> Edit</button>
+              <button className="btn btn-danger" onClick={handleDelete}><Trash2 size={18} /> Delete</button>
+            </div>
+          </>
+        );
+
+      case 'role':
+        return (
+          <>
+            <div className="detail-fields">
+              {renderField('ID', item.id)}
+              {renderField('Name', item.name)}
+              {renderField('Description', item.description || '-', true)}
+              {renderField('Users', item.user_count || 0)}
+              {renderField('Permissions', (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {(item.permissions || []).map((p, i) => <span key={i} className="tag">{p}</span>)}
+                </div>
+              ), true)}
+              {renderField('Created', formatDate(item.created_at))}
+              {renderField('Updated', formatDate(item.updated_at))}
+            </div>
+            <div className="detail-actions">
+              <button className="btn btn-secondary" onClick={handleEdit}><Edit3 size={18} /> Edit</button>
+              <button className="btn btn-danger" onClick={handleDelete}><Trash2 size={18} /> Delete</button>
+            </div>
+          </>
+        );
+
+      case 'notification':
+        return (
+          <>
+            <div className="detail-fields">
+              {renderField('ID', item.id)}
+              {renderField('Type', <span className={`card-badge badge-${item.type === 'error' ? 'failed' : item.type === 'success' ? 'completed' : item.type === 'warning' ? 'pending' : 'processing'}`}>{item.type}</span>)}
+              {renderField('Title', item.title)}
+              {renderField('Message', item.message, true)}
+              {renderField('Read', item.read ? 'Yes' : 'No')}
+              {renderField('Link', item.link || '-')}
+              {renderField('Created', formatDate(item.created_at))}
+            </div>
+            <div className="detail-actions">
               <button className="btn btn-danger" onClick={handleDelete}><Trash2 size={18} /> Delete</button>
             </div>
           </>
@@ -263,9 +315,7 @@ const DetailModal = ({ isOpen, onClose, title, item, type, onAction, onPlay, onD
   };
 
   const handleOverlayClick = (e) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
+    if (e.target === e.currentTarget) onClose();
   };
 
   return (
@@ -278,17 +328,10 @@ const DetailModal = ({ isOpen, onClose, title, item, type, onAction, onPlay, onD
         <div className="modal-body" onClick={(e) => e.stopPropagation()}>
           {type === 'video' && activeTab === 'transcription' ? (
             <div>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setActiveTab('details')}
-                style={{ marginBottom: 16 }}
-              >
+              <button className="btn btn-secondary" onClick={() => setActiveTab('details')} style={{ marginBottom: 16 }}>
                 Back to Details
               </button>
-              <TranscriptionPanel
-                videoId={item.id}
-                videoTitle={item.title}
-              />
+              <TranscriptionPanel videoId={item.id} videoTitle={item.title} />
             </div>
           ) : renderContent()}
         </div>

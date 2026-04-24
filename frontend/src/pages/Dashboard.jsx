@@ -10,6 +10,8 @@ import { formatDuration, formatShortDuration } from '../utils/formatters';
 import { LoadingSpinner } from '../components/common';
 import { EnhancedVideoPlayer } from '../components/video';
 import { DetailModal, SplitVideoModal } from '../components/modals';
+import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({});
@@ -19,16 +21,21 @@ const Dashboard = () => {
   const [playingVideo, setPlayingVideo] = useState(null);
   const [splitVideo, setSplitVideo] = useState(null);
   const navigate = useNavigate();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const handleDeleteVideo = async (video) => {
+    const confirmed = await confirm('Delete Video', `Are you sure you want to delete "${video.title}"?`);
+    if (!confirmed) return;
     try {
       await axios.delete(`${API_URL}/videos/${video.id}`);
       setSelectedVideo(null);
       setRecentVideos(recentVideos.filter(v => v.id !== video.id));
       setStats({ ...stats, videos: (stats.videos || 1) - 1 });
+      toast.success('Video deleted successfully');
     } catch (error) {
       console.error('Delete error:', error);
-      alert('Failed to delete video');
+      toast.error('Failed to delete video');
     }
   };
 

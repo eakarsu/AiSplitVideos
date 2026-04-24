@@ -31,7 +31,10 @@ const callOpenRouter = async (prompt, model = 'openai/gpt-4-turbo') => {
 // Get all AI analyses
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const { video_id, analysis_type, status, limit = 50, offset = 0 } = req.query;
+    const { video_id, analysis_type, status, search, sort_by = 'created_at', sort_order = 'DESC', limit = 50, offset = 0 } = req.query;
+    const validSorts = ['analysis_type', 'model_used', 'confidence_score', 'processing_time', 'created_at', 'status'];
+    const sortCol = validSorts.includes(sort_by) ? sort_by : 'created_at';
+    const order = sort_order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
     let query = `
       SELECT a.*, v.title as video_title
@@ -60,7 +63,13 @@ router.get('/', authMiddleware, async (req, res) => {
       paramIndex++;
     }
 
-    query += ` ORDER BY a.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    if (search) {
+      query += ` AND (a.analysis_type ILIKE $${paramIndex} OR a.model_used ILIKE $${paramIndex})`;
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    query += ` ORDER BY a.${sortCol} ${order} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(limit, offset);
 
     const result = await db.query(query, params);

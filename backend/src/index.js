@@ -14,6 +14,13 @@ const templateRoutes = require('./routes/templates');
 const aiAnalysisRoutes = require('./routes/aiAnalysis');
 const exportRoutes = require('./routes/exports');
 const transcriptionRoutes = require('./routes/transcriptions');
+const roleRoutes = require('./routes/roles');
+const passwordResetRoutes = require('./routes/passwordReset');
+const accountRoutes = require('./routes/account');
+const emailVerificationRoutes = require('./routes/emailVerification');
+const searchRoutes = require('./routes/search');
+const notificationRoutes = require('./routes/notifications');
+const auditLogRoutes = require('./routes/auditLog');
 
 const app = express();
 const server = http.createServer(app);
@@ -43,6 +50,13 @@ app.use('/api/templates', templateRoutes);
 app.use('/api/ai-analysis', aiAnalysisRoutes);
 app.use('/api/exports', exportRoutes);
 app.use('/api', transcriptionRoutes);
+app.use('/api/roles', roleRoutes);
+app.use('/api/password-reset', passwordResetRoutes);
+app.use('/api/account', accountRoutes);
+app.use('/api/email-verification', emailVerificationRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/audit-log', auditLogRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

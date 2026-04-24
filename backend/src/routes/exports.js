@@ -7,7 +7,10 @@ const router = express.Router();
 // Get all exports
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const { clip_id, video_id, status, format, limit = 50, offset = 0 } = req.query;
+    const { clip_id, video_id, status, format, search, sort_by = 'created_at', sort_order = 'DESC', limit = 50, offset = 0 } = req.query;
+    const validSorts = ['name', 'format', 'file_size', 'status', 'created_at'];
+    const sortCol = validSorts.includes(sort_by) ? sort_by : 'created_at';
+    const order = sort_order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
     let query = `
       SELECT e.*, c.title as clip_title, v.title as video_title
@@ -43,7 +46,13 @@ router.get('/', authMiddleware, async (req, res) => {
       paramIndex++;
     }
 
-    query += ` ORDER BY e.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    if (search) {
+      query += ` AND (e.name ILIKE $${paramIndex} OR e.format ILIKE $${paramIndex})`;
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    query += ` ORDER BY e.${sortCol} ${order} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(limit, offset);
 
     const result = await db.query(query, params);

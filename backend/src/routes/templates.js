@@ -7,7 +7,10 @@ const router = express.Router();
 // Get all templates
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const { category, is_public, limit = 50, offset = 0 } = req.query;
+    const { category, is_public, search, sort_by = 'usage_count', sort_order = 'DESC', limit = 50, offset = 0 } = req.query;
+    const validSorts = ['name', 'category', 'usage_count', 'created_at', 'split_type'];
+    const sortCol = validSorts.includes(sort_by) ? sort_by : 'usage_count';
+    const order = sort_order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
     let query = 'SELECT * FROM templates WHERE (user_id = $1 OR is_public = true)';
     const params = [req.user.id];
@@ -25,7 +28,13 @@ router.get('/', authMiddleware, async (req, res) => {
       paramIndex++;
     }
 
-    query += ` ORDER BY usage_count DESC, created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    if (search) {
+      query += ` AND (name ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`;
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    query += ` ORDER BY ${sortCol} ${order} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(limit, offset);
 
     const result = await db.query(query, params);
@@ -159,6 +168,19 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Delete template error:', error);
     res.status(500).json({ error: 'Failed to delete template' });
+  }
+});
+
+// Bulk delete templates
+router.post('/bulk/delete', authMiddleware, async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !ids.length) return res.status(400).json({ error: 'No IDs provided' });
+    await db.query('DELETE FROM templates WHERE id = ANY($1) AND user_id = $2', [ids, req.user.id]);
+    res.json({ message: `${ids.length} templates deleted` });
+  } catch (error) {
+    console.error('Bulk delete templates error:', error);
+    res.status(500).json({ error: 'Failed to bulk delete' });
   }
 });
 

@@ -1,5 +1,6 @@
 require('dotenv').config({ path: '../.env' });
 const bcrypt = require('bcryptjs');
+const { v4: uuidv4 } = require('uuid');
 const { pool } = require('./db');
 
 const seed = async () => {
@@ -9,17 +10,106 @@ const seed = async () => {
     await client.query('BEGIN');
 
     // Clear existing data
-    await client.query('TRUNCATE users, projects, videos, split_jobs, clips, templates, ai_analysis, exports, transcriptions RESTART IDENTITY CASCADE');
+    await client.query(`
+      TRUNCATE users, projects, videos, split_jobs, clips, templates, ai_analysis, exports, transcriptions,
+      roles, user_roles, password_resets, email_verifications, notifications, audit_log, search_history
+      RESTART IDENTITY CASCADE
+    `);
 
     // Create demo user
     const hashedPassword = await bcrypt.hash(process.env.DEMO_PASSWORD || 'demo123456', 10);
     const userResult = await client.query(`
-      INSERT INTO users (email, password, name, avatar_url)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO users (email, password, name, avatar_url, email_verified, role)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING id
-    `, [process.env.DEMO_EMAIL || 'demo@aisplitvideo.com', hashedPassword, 'Demo User', 'https://ui-avatars.com/api/?name=Demo+User']);
+    `, [process.env.DEMO_EMAIL || 'demo@aisplitvideo.com', hashedPassword, 'Demo User', 'https://ui-avatars.com/api/?name=Demo+User', true, 'admin']);
 
     const userId = userResult.rows[0].id;
+
+    // Create a second user for variety
+    const hashedPassword2 = await bcrypt.hash('user123456', 10);
+    const user2Result = await client.query(`
+      INSERT INTO users (email, password, name, avatar_url, email_verified, role)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id
+    `, ['user@aisplitvideo.com', hashedPassword2, 'Regular User', 'https://ui-avatars.com/api/?name=Regular+User', false, 'user']);
+
+    const userId2 = user2Result.rows[0].id;
+
+    // Seed Roles (16 items)
+    const roles = [
+      { name: 'admin', description: 'Full system access', permissions: ['read', 'write', 'delete', 'manage_users', 'manage_roles', 'view_audit_log', 'export_data', 'manage_settings'] },
+      { name: 'editor', description: 'Can edit and manage content', permissions: ['read', 'write', 'delete', 'export_data'] },
+      { name: 'viewer', description: 'Read-only access', permissions: ['read'] },
+      { name: 'moderator', description: 'Content moderation access', permissions: ['read', 'write', 'delete', 'moderate_content'] },
+      { name: 'uploader', description: 'Can upload videos', permissions: ['read', 'write', 'upload_video'] },
+      { name: 'analyst', description: 'AI analysis access', permissions: ['read', 'run_analysis', 'view_reports'] },
+      { name: 'exporter', description: 'Can export content', permissions: ['read', 'export_data', 'download'] },
+      { name: 'project_manager', description: 'Manage projects', permissions: ['read', 'write', 'delete', 'manage_projects'] },
+      { name: 'template_creator', description: 'Create and manage templates', permissions: ['read', 'write', 'manage_templates'] },
+      { name: 'billing_admin', description: 'Billing management', permissions: ['read', 'manage_billing', 'view_invoices'] },
+      { name: 'api_user', description: 'API-only access', permissions: ['api_read', 'api_write'] },
+      { name: 'guest', description: 'Limited guest access', permissions: ['read_public'] },
+      { name: 'super_admin', description: 'Super administrator', permissions: ['read', 'write', 'delete', 'manage_users', 'manage_roles', 'manage_settings', 'manage_billing', 'view_audit_log'] },
+      { name: 'content_creator', description: 'Full content creation access', permissions: ['read', 'write', 'upload_video', 'run_analysis', 'export_data'] },
+      { name: 'reviewer', description: 'Review and approve content', permissions: ['read', 'approve_content', 'reject_content'] },
+      { name: 'support', description: 'Customer support access', permissions: ['read', 'manage_users', 'view_audit_log'] }
+    ];
+
+    const roleIds = [];
+    for (const role of roles) {
+      const result = await client.query(
+        `INSERT INTO roles (name, description, permissions) VALUES ($1, $2, $3) RETURNING id`,
+        [role.name, role.description, JSON.stringify(role.permissions)]
+      );
+      roleIds.push(result.rows[0].id);
+    }
+
+    // Seed User Roles (16 items)
+    const userRoleAssignments = [
+      { userId, roleId: roleIds[0] },  // admin
+      { userId, roleId: roleIds[12] }, // super_admin
+      { userId, roleId: roleIds[13] }, // content_creator
+      { userId, roleId: roleIds[7] },  // project_manager
+      { userId, roleId: roleIds[5] },  // analyst
+      { userId, roleId: roleIds[6] },  // exporter
+      { userId, roleId: roleIds[8] },  // template_creator
+      { userId, roleId: roleIds[3] },  // moderator
+      { userId2, roleId: roleIds[2] }, // viewer
+      { userId2, roleId: roleIds[4] }, // uploader
+      { userId2, roleId: roleIds[1] }, // editor
+      { userId2, roleId: roleIds[13] }, // content_creator
+      { userId2, roleId: roleIds[6] }, // exporter
+      { userId2, roleId: roleIds[14] }, // reviewer
+      { userId2, roleId: roleIds[15] }, // support
+      { userId2, roleId: roleIds[10] }, // api_user
+    ];
+
+    for (const ur of userRoleAssignments) {
+      await client.query(
+        `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)`,
+        [ur.userId, ur.roleId]
+      );
+    }
+
+    // Seed Password Resets (16 items)
+    for (let i = 0; i < 16; i++) {
+      const token = uuidv4();
+      const hoursAgo = i * 6;
+      await client.query(
+        `INSERT INTO password_resets (user_id, token, expires_at, used) VALUES ($1, $2, NOW() + INTERVAL '${24 - hoursAgo} hours', $3)`,
+        [i < 8 ? userId : userId2, token, i < 4]
+      );
+    }
+
+    // Seed Email Verifications (16 items)
+    for (let i = 0; i < 16; i++) {
+      const token = uuidv4();
+      await client.query(
+        `INSERT INTO email_verifications (user_id, token, verified, expires_at) VALUES ($1, $2, $3, NOW() + INTERVAL '48 hours')`,
+        [i < 8 ? userId : userId2, token, i < 8]
+      );
+    }
 
     // Seed Projects (15+ items)
     const projects = [
@@ -52,15 +142,12 @@ const seed = async () => {
       projectIds.push(result.rows[0].id);
     }
 
-    // Seed Videos - Mix of short clips and long-form content (30+ min)
+    // Seed Videos
     const youtubeVideos = [
-      // Short music videos (3-6 min)
       { id: 'dQw4w9WgXcQ', title: 'Rick Astley - Never Gonna Give You Up', description: 'Official music video', duration: 213, resolution: '1920x1080' },
       { id: 'kJQP7kiw5Fk', title: 'Luis Fonsi - Despacito', description: 'Official music video', duration: 282, resolution: '1920x1080' },
       { id: '9bZkp7q19f0', title: 'PSY - GANGNAM STYLE', description: 'Official music video', duration: 253, resolution: '1920x1080' },
       { id: 'fJ9rUzIMcZQ', title: 'Queen - Bohemian Rhapsody', description: 'Official video Remastered', duration: 367, resolution: '1920x1080' },
-
-      // Long-form content (30+ minutes) - Documentaries, Talks, Educational
       { id: 'arj7oStGLkU', title: 'TED: Inside the Mind of a Master Procrastinator', description: 'Tim Urban TED Talk - Full presentation', duration: 840, resolution: '1920x1080' },
       { id: 'UF8uR6Z6KLc', title: 'Steve Jobs Stanford Commencement Speech 2005', description: 'Inspirational graduation speech', duration: 915, resolution: '1920x1080' },
       { id: 'xuCn8ux2gbs', title: 'history of the entire world, i guess', description: 'Bill Wurtz - Complete history video', duration: 1166, resolution: '1920x1080' },
@@ -95,7 +182,7 @@ const seed = async () => {
       videoIds.push(result.rows[0].id);
     }
 
-    // Seed Split Jobs (15+ items)
+    // Seed Split Jobs (16 items)
     const splitJobs = [
       { name: 'Auto Scene Detection', split_type: 'scene', status: 'completed', progress: 100, clips_generated: 12 },
       { name: 'Time-based Split 30s', split_type: 'time', status: 'completed', progress: 100, clips_generated: 8 },
@@ -128,15 +215,12 @@ const seed = async () => {
       splitJobIds.push(result.rows[0].id);
     }
 
-    // Seed Clips - Mix of short music clips and long course chapters
+    // Seed Clips
     const clips = [
-      // Short music clips
       { title: 'Never Gonna Give You Up - Chorus', start_time: 43, end_time: 88, ai_score: 0.95, ai_tags: ['chorus', 'viral', 'catchy'], ytId: 'dQw4w9WgXcQ' },
       { title: 'Despacito - Hook Section', start_time: 75, end_time: 120, ai_score: 0.88, ai_tags: ['hook', 'danceable'], ytId: 'kJQP7kiw5Fk' },
       { title: 'Gangnam Style - Dance Break', start_time: 60, end_time: 90, ai_score: 0.92, ai_tags: ['dance', 'viral'], ytId: '9bZkp7q19f0' },
       { title: 'Bohemian Rhapsody - Opera Section', start_time: 180, end_time: 240, ai_score: 0.97, ai_tags: ['opera', 'legendary'], ytId: 'fJ9rUzIMcZQ' },
-
-      // Long course chapters (30 min segments)
       { title: 'Python Course - Chapter 1: Introduction', start_time: 0, end_time: 1800, ai_score: 0.91, ai_tags: ['python', 'basics', 'intro'], ytId: 'rfscVS0vtbw' },
       { title: 'Python Course - Chapter 2: Variables', start_time: 1800, end_time: 3600, ai_score: 0.89, ai_tags: ['python', 'variables'], ytId: 'rfscVS0vtbw' },
       { title: 'Python Course - Chapter 3: Functions', start_time: 3600, end_time: 5400, ai_score: 0.93, ai_tags: ['python', 'functions'], ytId: 'rfscVS0vtbw' },
@@ -167,7 +251,7 @@ const seed = async () => {
       clipIds.push(result.rows[0].id);
     }
 
-    // Seed Templates (15+ items)
+    // Seed Templates (16 items)
     const templates = [
       { name: 'YouTube Shorts Template', description: 'Optimized for YouTube Shorts', category: 'social', split_type: 'time', is_public: true, usage_count: 1250 },
       { name: 'TikTok Viral', description: 'Perfect for TikTok content', category: 'social', split_type: 'ai_highlight', is_public: true, usage_count: 2100 },
@@ -196,7 +280,7 @@ const seed = async () => {
           JSON.stringify({ minDuration: 15, maxDuration: 60, quality: 'high' })]);
     }
 
-    // Seed AI Analysis (15+ items)
+    // Seed AI Analysis (16 items)
     const aiAnalyses = [
       { analysis_type: 'scene_detection', model_used: 'gpt-4-vision', confidence_score: 0.94, processing_time: 45, status: 'completed' },
       { analysis_type: 'highlight_detection', model_used: 'claude-3-opus', confidence_score: 0.91, processing_time: 60, status: 'completed' },
@@ -228,8 +312,8 @@ const seed = async () => {
           JSON.stringify({ results: [], metadata: { analyzed_at: new Date().toISOString() } })]);
     }
 
-    // Seed Exports (15+ items)
-    const exports = [
+    // Seed Exports (16 items)
+    const exportItems = [
       { name: 'YouTube Export 1080p', format: 'mp4', resolution: '1920x1080', status: 'completed', file_size: 150000000 },
       { name: 'TikTok Export Vertical', format: 'mp4', resolution: '1080x1920', status: 'completed', file_size: 80000000 },
       { name: 'Instagram Square', format: 'mp4', resolution: '1080x1080', status: 'completed', file_size: 65000000 },
@@ -248,8 +332,8 @@ const seed = async () => {
       { name: 'Archive Backup', format: 'mov', resolution: '1920x1080', status: 'completed', file_size: 200000000 }
     ];
 
-    for (let i = 0; i < exports.length; i++) {
-      const exp = exports[i];
+    for (let i = 0; i < exportItems.length; i++) {
+      const exp = exportItems[i];
       const clipId = clipIds[i % clipIds.length];
       const videoId = videoIds[i % videoIds.length];
       await client.query(`
@@ -259,6 +343,93 @@ const seed = async () => {
           exp.status, 100,
           `/uploads/exports/export_${i + 1}.${exp.format}`,
           JSON.stringify({ quality: 'high', codec: 'h264' })]);
+    }
+
+    // Seed Notifications (16 items)
+    const notificationItems = [
+      { type: 'success', title: 'Video uploaded successfully', message: 'Your video "Python Full Course" has been uploaded and is ready for processing.', link: '/videos' },
+      { type: 'info', title: 'Split job completed', message: 'Auto Scene Detection has finished processing. 12 clips were generated.', link: '/split-jobs' },
+      { type: 'warning', title: 'Storage almost full', message: 'You are using 85% of your storage quota. Consider deleting unused files.', link: '/exports' },
+      { type: 'error', title: 'Export failed', message: 'The 4K export for "Bohemian Rhapsody" failed due to insufficient memory.', link: '/exports' },
+      { type: 'info', title: 'New template available', message: 'A new "AI Content Optimizer" template has been added to the public library.', link: '/templates' },
+      { type: 'success', title: 'AI Analysis complete', message: 'Sentiment analysis for "TED Talk" is complete with 89% confidence.', link: '/ai-analysis' },
+      { type: 'info', title: 'Weekly summary', message: 'You processed 15 videos and generated 45 clips this week. Great work!', link: '/' },
+      { type: 'warning', title: 'Verify your email', message: 'Please verify your email address to unlock all features.', link: '/profile' },
+      { type: 'success', title: 'Project archived', message: 'Your project "Travel Vlogs" has been archived successfully.', link: '/projects' },
+      { type: 'info', title: 'System maintenance', message: 'Scheduled maintenance on Sunday 2am-4am EST. Service may be briefly unavailable.', link: null },
+      { type: 'success', title: 'Batch upload complete', message: '8 videos were uploaded successfully to "Gaming Highlights" project.', link: '/projects' },
+      { type: 'error', title: 'Transcription failed', message: 'Audio extraction failed for "JavaScript Crash Course". Please re-upload the video.', link: '/videos' },
+      { type: 'info', title: 'Role updated', message: 'Your role has been updated to "Content Creator" by an administrator.', link: '/profile' },
+      { type: 'success', title: 'Password changed', message: 'Your password has been changed successfully.', link: '/profile' },
+      { type: 'warning', title: 'API rate limit', message: 'You are approaching the API rate limit. 85 of 100 requests used this hour.', link: null },
+      { type: 'info', title: 'Feature update', message: 'New bulk export feature is now available! Export multiple clips at once.', link: '/exports' }
+    ];
+
+    for (let i = 0; i < notificationItems.length; i++) {
+      const n = notificationItems[i];
+      await client.query(
+        `INSERT INTO notifications (user_id, type, title, message, read, link, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, NOW() - INTERVAL '${i * 3} hours')`,
+        [userId, n.type, n.title, n.message, i < 5, n.link]
+      );
+    }
+
+    // Seed Audit Log (16 items)
+    const auditEntries = [
+      { action: 'user.login', entity_type: 'user', details: { ip: '192.168.1.1', browser: 'Chrome' } },
+      { action: 'video.upload', entity_type: 'video', details: { filename: 'tutorial.mp4', size: '150MB' } },
+      { action: 'project.create', entity_type: 'project', details: { name: 'YouTube Shorts Collection' } },
+      { action: 'split_job.start', entity_type: 'split_job', details: { type: 'scene', video: 'Python Course' } },
+      { action: 'clip.export', entity_type: 'clip', details: { format: 'mp4', resolution: '1080p' } },
+      { action: 'template.create', entity_type: 'template', details: { name: 'TikTok Viral', public: true } },
+      { action: 'user.update_profile', entity_type: 'user', details: { fields: ['name', 'avatar'] } },
+      { action: 'video.delete', entity_type: 'video', details: { title: 'Old Recording', reason: 'cleanup' } },
+      { action: 'ai_analysis.run', entity_type: 'ai_analysis', details: { type: 'sentiment', model: 'claude-3' } },
+      { action: 'export.download', entity_type: 'export', details: { format: 'mp4', size: '80MB' } },
+      { action: 'project.update', entity_type: 'project', details: { status: 'completed' } },
+      { action: 'user.change_password', entity_type: 'user', details: { method: 'profile_settings' } },
+      { action: 'role.assign', entity_type: 'role', details: { role: 'editor', target_user: 'user@test.com' } },
+      { action: 'bulk.delete', entity_type: 'clip', details: { count: 5, reason: 'cleanup' } },
+      { action: 'settings.update', entity_type: 'settings', details: { setting: 'notifications', value: 'enabled' } },
+      { action: 'user.logout', entity_type: 'user', details: { session_duration: '2h 15m' } }
+    ];
+
+    for (let i = 0; i < auditEntries.length; i++) {
+      const entry = auditEntries[i];
+      await client.query(
+        `INSERT INTO audit_log (user_id, action, entity_type, entity_id, details, created_at)
+         VALUES ($1, $2, $3, $4, $5, NOW() - INTERVAL '${i * 2} hours')`,
+        [userId, entry.action, entry.entity_type, i + 1, JSON.stringify(entry.details)]
+      );
+    }
+
+    // Seed Search History (16 items)
+    const searchHistoryItems = [
+      { query: 'python tutorial', type: 'videos', results_count: 5 },
+      { query: 'music video clips', type: 'clips', results_count: 12 },
+      { query: 'TikTok template', type: 'templates', results_count: 3 },
+      { query: 'scene detection', type: 'ai-analysis', results_count: 4 },
+      { query: 'gaming highlights', type: 'projects', results_count: 1 },
+      { query: 'react course', type: 'videos', results_count: 3 },
+      { query: 'export 4K', type: 'exports', results_count: 2 },
+      { query: 'javascript', type: 'all', results_count: 15 },
+      { query: 'podcast', type: 'templates', results_count: 2 },
+      { query: 'split by silence', type: 'split-jobs', results_count: 1 },
+      { query: 'cooking', type: 'projects', results_count: 1 },
+      { query: 'face detection', type: 'ai-analysis', results_count: 2 },
+      { query: 'instagram reels', type: 'templates', results_count: 1 },
+      { query: 'Node.js', type: 'videos', results_count: 2 },
+      { query: 'viral content', type: 'all', results_count: 8 },
+      { query: 'audio analysis', type: 'ai-analysis', results_count: 3 }
+    ];
+
+    for (let i = 0; i < searchHistoryItems.length; i++) {
+      const s = searchHistoryItems[i];
+      await client.query(
+        `INSERT INTO search_history (user_id, query, type, results_count, created_at)
+         VALUES ($1, $2, $3, $4, NOW() - INTERVAL '${i * 4} hours')`,
+        [userId, s.query, s.type, s.results_count]
+      );
     }
 
     await client.query('COMMIT');

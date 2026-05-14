@@ -73,3 +73,15 @@ server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log('WebSocket server initialized');
 });
+app.use('/api/viral-moment-detection', require('./routes/viralMomentDetection')); app.use('/api/format-clip-optimizer', require('./routes/formatClipOptimizer')); app.use('/api/auto-chaptering', require('./routes/autoChaptering')); app.use('/api/speaker-diarization', require('./routes/speakerDiarization')); app.use('/api/batch-processing-agent', require('./routes/batchProcessingAgent')); app.use('/api/publisher-integrations', require('./routes/publisherIntegrations'));
+
+// === Batch 08 Gaps & Frontend Mounts ===
+app.use('/api/gap-no-ai-driven-highlight-detection-endpoint-frontend-stub-exists', require('./routes/gapNoAiDrivenHighlightDetectionEndpointFrontendStubExists'));
+app.use('/api/gap-no-ai-powered-subtitle-caption-optimization-endpoint', require('./routes/gapNoAiPoweredSubtitleCaptionOptimizationEndpoint'));
+app.use('/api/gap-no-ai-scene-change-detection-backend', require('./routes/gapNoAiSceneChangeDetectionBackend'));
+app.use('/api/gap-ai-surface-area-is-modest-6-endpoints-relative', require('./routes/gapAiSurfaceAreaIsModest6EndpointsRelative'));
+app.use('/api/gap-no-integrations-with-youtube-tiktok-instagram-for-direct', require('./routes/gapNoIntegrationsWithYoutubeTiktokInstagramForDirect'));
+app.use('/api/gap-no-subtitle-caption-editing-ui-in-backend', require('./routes/gapNoSubtitleCaptionEditingUiInBackend'));
+app.use('/api/gap-no-watermarking-or-branding-controls', require('./routes/gapNoWatermarkingOrBrandingControls'));
+app.use('/api/gap-no-public-api-for-third-party-integrations', require('./routes/gapNoPublicApiForThirdPartyIntegrations'));
+app.use('/api/gap-no-webhooks-for-job-completion-notifications', require('./routes/gapNoWebhooksForJobCompletionNotifications'));

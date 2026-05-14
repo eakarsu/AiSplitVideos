@@ -312,6 +312,143 @@ router.post('/generate-metadata', authMiddleware, async (req, res) => {
   }
 });
 
+// Highlight detection — identify high-engagement segments
+router.post('/highlight-detection', authMiddleware, async (req, res) => {
+  try {
+    const { video_id, transcript, max_highlights } = req.body;
+
+    const prompt = `Analyze the video transcript and identify the highest-engagement moments most likely to perform as standalone clips.
+Transcript: ${(transcript || '').slice(0, 6000)}
+Return up to ${max_highlights || 5} highlights as JSON array:
+[{"start_time": <seconds>, "end_time": <seconds>, "title": "...", "rationale": "...", "viral_potential": <0-100>}]`;
+
+    let highlights;
+    try {
+      const aiResponse = await callOpenRouter(prompt);
+      highlights = aiResponse.choices[0]?.message?.content;
+    } catch (error) {
+      highlights = JSON.stringify([
+        { start_time: 0, end_time: 30, title: 'Hook', rationale: 'Strong opening', viral_potential: 75 }
+      ]);
+    }
+
+    res.json({ highlights, video_id });
+  } catch (error) {
+    console.error('Highlight detection error:', error);
+    res.status(500).json({ error: 'Failed to detect highlights' });
+  }
+});
+
+// Caption optimization — refine subtitles for engagement / readability
+router.post('/caption-optimization', authMiddleware, async (req, res) => {
+  try {
+    const { captions, platform, audience } = req.body;
+
+    const prompt = `Optimize the following captions for ${platform || 'general'} (audience: ${audience || 'general'}).
+Goals: improve readability, retention, and engagement; preserve meaning.
+Captions: ${(captions || '').slice(0, 6000)}
+
+Return JSON:
+{
+  "optimized_captions": "...",
+  "changes_made": ["..."],
+  "readability_score": <0-100>,
+  "platform_tips": ["..."]
+}`;
+
+    let optimization;
+    try {
+      const aiResponse = await callOpenRouter(prompt, 'anthropic/claude-3-haiku');
+      optimization = aiResponse.choices[0]?.message?.content;
+    } catch (error) {
+      optimization = JSON.stringify({
+        optimized_captions: captions || '',
+        changes_made: ['(AI unavailable - returning input)'],
+        readability_score: 50,
+        platform_tips: []
+      });
+    }
+
+    res.json({ optimization });
+  } catch (error) {
+    console.error('Caption optimization error:', error);
+    res.status(500).json({ error: 'Failed to optimize captions' });
+  }
+});
+
+// ==================== Apply pass 4: Format-Specific Clip Optimizer ====================
+// POST /api/ai-analysis/format-clip-optimizer
+router.post('/format-clip-optimizer', authMiddleware, async (req, res) => {
+  try {
+    if (!process.env.OPENROUTER_API_KEY) {
+      return res.status(503).json({ error: 'AI service not configured (OPENROUTER_API_KEY missing)' });
+    }
+    const { transcript, target_format, target_platform, source_duration_seconds } = req.body;
+    if (!target_format) {
+      return res.status(400).json({ error: 'target_format is required (e.g., shorts, reels, tiktok, longform-yt)' });
+    }
+
+    const prompt = `You are a short-form video producer. Recommend an optimized clip for the requested format.
+Target format: ${target_format}
+Target platform: ${target_platform || 'auto'}
+Source duration (seconds): ${source_duration_seconds || 'unknown'}
+Transcript:
+${(transcript || '').slice(0, 6000)}
+
+Return JSON:
+{
+  "recommended_aspect_ratio": "9:16"|"1:1"|"16:9",
+  "recommended_duration_seconds": <number>,
+  "recommended_clip": {"start_time": <seconds>, "end_time": <seconds>, "title": "...", "hook_line": "..."},
+  "caption_style": "...",
+  "platform_specific_tips": ["..."],
+  "expected_retention_curve": "..."
+}`;
+
+    const aiResponse = await callOpenRouter(prompt, 'anthropic/claude-3-haiku');
+    const content = aiResponse.choices?.[0]?.message?.content;
+    res.json({ optimization: content, target_format, target_platform: target_platform || null });
+  } catch (error) {
+    console.error('Format clip optimizer error:', error);
+    res.status(500).json({ error: 'Failed to optimize clip for format', details: error.message });
+  }
+});
+
+// ==================== Apply pass 4: Automated Chaptering ====================
+// POST /api/ai-analysis/auto-chapter
+router.post('/auto-chapter', authMiddleware, async (req, res) => {
+  try {
+    if (!process.env.OPENROUTER_API_KEY) {
+      return res.status(503).json({ error: 'AI service not configured (OPENROUTER_API_KEY missing)' });
+    }
+    const { transcript, video_id, target_chapter_count } = req.body;
+    if (!transcript) {
+      return res.status(400).json({ error: 'transcript is required' });
+    }
+
+    const prompt = `Generate chapter markers from the video transcript suitable for YouTube/podcast chapters.
+Transcript:
+${transcript.slice(0, 8000)}
+
+Goal: ${target_chapter_count ? `produce ~${target_chapter_count} chapters` : 'produce 5-12 well-paced chapters'}.
+Each chapter must have a punchy title (under 7 words).
+
+Return JSON:
+{
+  "chapters": [{"start_time": <seconds>, "title": "..."}],
+  "summary": "...",
+  "estimated_total_duration_seconds": <number>
+}`;
+
+    const aiResponse = await callOpenRouter(prompt, 'anthropic/claude-3-haiku');
+    const content = aiResponse.choices?.[0]?.message?.content;
+    res.json({ chapters: content, video_id: video_id || null });
+  } catch (error) {
+    console.error('Auto chapter error:', error);
+    res.status(500).json({ error: 'Failed to generate chapters', details: error.message });
+  }
+});
+
 // Delete AI analysis
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {

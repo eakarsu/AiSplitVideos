@@ -16,3 +16,7 @@ export { default as SearchResultsPage } from './SearchResultsPage';
 export { default as RolesPage } from './RolesPage';
 export { default as NotificationsPage } from './NotificationsPage';
 export { default as EmailVerificationPage } from './EmailVerificationPage';
+export { default as HighlightDetectionPage } from './HighlightDetectionPage';
+export { default as CaptionOptimizationPage } from './CaptionOptimizationPage';
+export { default as FormatClipOptimizerPage } from './FormatClipOptimizerPage';
+export { default as AutoChapterPage } from './AutoChapterPage';

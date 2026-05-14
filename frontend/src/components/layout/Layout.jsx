@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Video, FolderOpen, Scissors, Film, Layout as LayoutIcon, Brain, Download,
-  Home, LogOut, Shield, Bell, User, Menu, X, Search
+  Home, LogOut, Shield, Bell, User, Menu, X, Search, Sparkles, Wand2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { NotificationBell } from '../common';
 
 const iconMap = {
-  Home, FolderOpen, Video, Scissors, Film, LayoutIcon, Brain, Download, Shield, Bell, User
+  Home, FolderOpen, Video, Scissors, Film, LayoutIcon, Brain, Download, Shield, Bell, User, Sparkles, Wand2
 };
 
 const navItems = [
@@ -20,6 +20,10 @@ const navItems = [
   { path: '/clips', icon: 'Film', label: 'Clips' },
   { path: '/templates', icon: 'LayoutIcon', label: 'Templates' },
   { path: '/ai-analysis', icon: 'Brain', label: 'AI Analysis' },
+  { path: '/highlight-detection', icon: 'Sparkles', label: 'Highlights' },
+  { path: '/caption-optimization', icon: 'Wand2', label: 'Captions' },
+  { path: '/format-clip-optimizer', icon: 'Sparkles', label: 'Clip Optimizer' },
+  { path: '/auto-chapter', icon: 'Sparkles', label: 'Chapters' },
   { path: '/exports', icon: 'Download', label: 'Exports' },
   { path: '/roles', icon: 'Shield', label: 'Roles' },
   { path: '/notifications', icon: 'Bell', label: 'Notifications' },

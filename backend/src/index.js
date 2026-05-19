@@ -85,3 +85,6 @@ app.use('/api/gap-no-subtitle-caption-editing-ui-in-backend', require('./routes/
 app.use('/api/gap-no-watermarking-or-branding-controls', require('./routes/gapNoWatermarkingOrBrandingControls'));
 app.use('/api/gap-no-public-api-for-third-party-integrations', require('./routes/gapNoPublicApiForThirdPartyIntegrations'));
 app.use('/api/gap-no-webhooks-for-job-completion-notifications', require('./routes/gapNoWebhooksForJobCompletionNotifications'));
+
+// === Custom Views (Video Views) ===
+app.use('/api/custom-views', require('./routes/customViews'));

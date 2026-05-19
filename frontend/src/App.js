@@ -5,23 +5,23 @@ import { SocketProvider } from './context/SocketContext';
 import { ToastProvider } from './context/ToastContext';
 import { ConfirmProvider } from './context/ConfirmContext';
 import { ProtectedRoute, ErrorBoundary } from './components/common';
-import {
 // === Batch 08 Gaps & Frontend Mounts ===
-import CfViralMomentDetectionIdentifyingHighEngagementSegments from './pages/CfViralMomentDetectionIdentifyingHighEngagementSegments'
-import CfFormatSpecificClipOptimizerForPlatformTailored from './pages/CfFormatSpecificClipOptimizerForPlatformTailored'
-import CfAutomatedChapteringWithSceneChangeDetection from './pages/CfAutomatedChapteringWithSceneChangeDetection'
-import CfSpeakerDiarizationAndSentimentTrackingWithEmotional from './pages/CfSpeakerDiarizationAndSentimentTrackingWithEmotional'
-import CfBatchProcessingAgentWithPriorityQueueAnd from './pages/CfBatchProcessingAgentWithPriorityQueueAnd'
-import CfPublisherIntegrationsWithScheduledCrossPostingTo from './pages/CfPublisherIntegrationsWithScheduledCrossPostingTo'
-import GapNoAiDrivenHighlightDetectionEndpointFrontend from './pages/GapNoAiDrivenHighlightDetectionEndpointFrontend'
-import GapNoAiPoweredSubtitleCaptionOptimizationEndpoint from './pages/GapNoAiPoweredSubtitleCaptionOptimizationEndpoint'
-import GapNoAiSceneChangeDetectionBackend from './pages/GapNoAiSceneChangeDetectionBackend'
-import GapAiSurfaceAreaIsModest6Endpoints from './pages/GapAiSurfaceAreaIsModest6Endpoints'
-import GapNoIntegrationsWithYoutubeTiktokInstagramFor from './pages/GapNoIntegrationsWithYoutubeTiktokInstagramFor'
-import GapNoSubtitleCaptionEditingUiInBackend from './pages/GapNoSubtitleCaptionEditingUiInBackend'
-import GapNoWatermarkingOrBrandingControls from './pages/GapNoWatermarkingOrBrandingControls'
-import GapNoPublicApiForThirdPartyIntegrations from './pages/GapNoPublicApiForThirdPartyIntegrations'
-import GapNoWebhooksForJobCompletionNotifications from './pages/GapNoWebhooksForJobCompletionNotifications'
+import CfViralMomentDetectionIdentifyingHighEngagementSegments from './pages/CfViralMomentDetectionIdentifyingHighEngagementSegments';
+import CfFormatSpecificClipOptimizerForPlatformTailored from './pages/CfFormatSpecificClipOptimizerForPlatformTailored';
+import CfAutomatedChapteringWithSceneChangeDetection from './pages/CfAutomatedChapteringWithSceneChangeDetection';
+import CfSpeakerDiarizationAndSentimentTrackingWithEmotional from './pages/CfSpeakerDiarizationAndSentimentTrackingWithEmotional';
+import CfBatchProcessingAgentWithPriorityQueueAnd from './pages/CfBatchProcessingAgentWithPriorityQueueAnd';
+import CfPublisherIntegrationsWithScheduledCrossPostingTo from './pages/CfPublisherIntegrationsWithScheduledCrossPostingTo';
+import GapNoAiDrivenHighlightDetectionEndpointFrontend from './pages/GapNoAiDrivenHighlightDetectionEndpointFrontend';
+import GapNoAiPoweredSubtitleCaptionOptimizationEndpoint from './pages/GapNoAiPoweredSubtitleCaptionOptimizationEndpoint';
+import GapNoAiSceneChangeDetectionBackend from './pages/GapNoAiSceneChangeDetectionBackend';
+import GapAiSurfaceAreaIsModest6Endpoints from './pages/GapAiSurfaceAreaIsModest6Endpoints';
+import GapNoIntegrationsWithYoutubeTiktokInstagramFor from './pages/GapNoIntegrationsWithYoutubeTiktokInstagramFor';
+import GapNoSubtitleCaptionEditingUiInBackend from './pages/GapNoSubtitleCaptionEditingUiInBackend';
+import GapNoWatermarkingOrBrandingControls from './pages/GapNoWatermarkingOrBrandingControls';
+import GapNoPublicApiForThirdPartyIntegrations from './pages/GapNoPublicApiForThirdPartyIntegrations';
+import GapNoWebhooksForJobCompletionNotifications from './pages/GapNoWebhooksForJobCompletionNotifications';
+import {
   LoginPage,
   Dashboard,
   ProjectsPage,
@@ -42,7 +42,8 @@ import GapNoWebhooksForJobCompletionNotifications from './pages/GapNoWebhooksFor
   HighlightDetectionPage,
   CaptionOptimizationPage,
   FormatClipOptimizerPage,
-  AutoChapterPage
+  AutoChapterPage,
+  CustomViewsPage
 } from './pages';
 
 function App() {
@@ -76,6 +77,7 @@ function App() {
                     <Route path="/caption-optimization" element={<ProtectedRoute><CaptionOptimizationPage /></ProtectedRoute>} />
                     <Route path="/format-clip-optimizer" element={<ProtectedRoute><FormatClipOptimizerPage /></ProtectedRoute>} />
                     <Route path="/auto-chapter" element={<ProtectedRoute><AutoChapterPage /></ProtectedRoute>} />
+                    <Route path="/custom-views" element={<ProtectedRoute><CustomViewsPage /></ProtectedRoute>} />
                   {/* // === Batch 08 Gaps & Frontend Mounts === */}
       <Route path="/cf-viral-moment-detection-identifying-high-engagement-segments-by-sentiment" element={<ProtectedRoute><CfViralMomentDetectionIdentifyingHighEngagementSegments /></ProtectedRoute>} />
       <Route path="/cf-format-specific-clip-optimizer-for-platform-tailored-exports" element={<ProtectedRoute><CfFormatSpecificClipOptimizerForPlatformTailored /></ProtectedRoute>} />

@@ -24,6 +24,7 @@ const navItems = [
   { path: '/caption-optimization', icon: 'Wand2', label: 'Captions' },
   { path: '/format-clip-optimizer', icon: 'Sparkles', label: 'Clip Optimizer' },
   { path: '/auto-chapter', icon: 'Sparkles', label: 'Chapters' },
+  { path: '/custom-views', icon: 'LayoutIcon', label: 'Video Views' },
   { path: '/exports', icon: 'Download', label: 'Exports' },
   { path: '/roles', icon: 'Shield', label: 'Roles' },
   { path: '/notifications', icon: 'Bell', label: 'Notifications' },

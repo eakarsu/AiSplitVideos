@@ -21,6 +21,11 @@ import GapNoSubtitleCaptionEditingUiInBackend from './pages/GapNoSubtitleCaption
 import GapNoWatermarkingOrBrandingControls from './pages/GapNoWatermarkingOrBrandingControls';
 import GapNoPublicApiForThirdPartyIntegrations from './pages/GapNoPublicApiForThirdPartyIntegrations';
 import GapNoWebhooksForJobCompletionNotifications from './pages/GapNoWebhooksForJobCompletionNotifications';
+import CodexCustomVizFeature from './pages/CodexCustomVizFeature';
+import CodexOperationsFeature from './pages/CodexOperationsFeature';
+
+import TimelineView from './pages/TimelineView';
+
 import {
   LoginPage,
   Dashboard,
@@ -56,6 +61,10 @@ function App() {
               <ErrorBoundary>
                 <div className="app">
                   <Routes>
+        <Route path="/insights/timeline" element={<ProtectedRoute><TimelineView /></ProtectedRoute>} />
+        <Route path="/codex/custom-viz" element={<CodexCustomVizFeature />} />
+        <Route path="/codex/operations" element={<CodexOperationsFeature />} />
+
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/forgot-password" element={<PasswordResetRequestPage />} />
                     <Route path="/reset-password/:token" element={<PasswordResetPage />} />

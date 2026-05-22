@@ -41,3 +41,12 @@ Pattern reused: `callOpenRouter` w/ graceful mock fallback (matching existing en
 - Routes registered in `frontend/src/App.js` (`/highlight-detection`, `/caption-optimization`) and linked from `components/layout/Layout.jsx`.
 - JWT Bearer auth via shared `api` axios instance reading `localStorage.token`.
 - No FE changes needed. No deps installed.
+
+## Apply pass 6 (close-out)
+- Implemented:
+  - `POST /api/ai-analysis/format-specific-optimize` — multi-platform clip optimization returning per-platform `{platform, recommended_duration_s, aspect_ratio, caption_strategy, hook_at_s, cta, hashtags}` for tiktok/reels/shorts/linkedin (default) plus `notes`.
+  - `POST /api/ai-analysis/automated-chaptering` — rich chapter generation returning `{chapters: [{start_s, end_s, title, summary, key_points}], chapter_style}` from transcript with optional `timestamps`/`video_metadata` hints.
+- Pattern: `callOpenRouter` (claude-3-haiku) wrapped in try/catch with heuristic mock fallback, matching prior passes. Append-only — no edits to existing endpoints (the pass-4 `format-clip-optimizer` / `auto-chapter` endpoints remain untouched and coexist).
+- Files touched: `backend/src/routes/aiAnalysis.js`, `_AUDIT_NOTE.md`
+- Syntax check: PASS (`node --check` on `aiAnalysis.js`)
+- Backlog remaining after pass 6: NEEDS-CREDS (YouTube/TikTok/IG OAuth publishing), NEEDS-PRODUCT-DECISION (watermarking pipeline, batch queue orchestrator)

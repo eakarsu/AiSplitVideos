@@ -20,3 +20,4 @@ export { default as HighlightDetectionPage } from './HighlightDetectionPage';
 export { default as CaptionOptimizationPage } from './CaptionOptimizationPage';
 export { default as FormatClipOptimizerPage } from './FormatClipOptimizerPage';
 export { default as AutoChapterPage } from './AutoChapterPage';
+export { default as CustomViewsPage } from './CustomViewsPage';

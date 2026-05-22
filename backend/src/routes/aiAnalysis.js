@@ -449,6 +449,126 @@ Return JSON:
   }
 });
 
+// ==================== Apply pass 6: Format-Specific Clip Optimizer (multi-platform) ====================
+// POST /api/ai-analysis/format-specific-optimize
+router.post('/format-specific-optimize', authMiddleware, async (req, res) => {
+  try {
+    const { clip, target_platforms } = req.body || {};
+    if (!clip || typeof clip !== 'object') {
+      return res.status(400).json({ error: 'clip object is required (transcript, duration, scene_descriptions?)' });
+    }
+    const platforms = Array.isArray(target_platforms) && target_platforms.length
+      ? target_platforms
+      : ['tiktok', 'reels', 'shorts', 'linkedin'];
+
+    const prompt = `You are a multi-platform short-form video strategist. Given one source clip, produce per-platform
+optimization recommendations tuned to each platform's native format, length sweet-spot, and audience behavior.
+
+Clip transcript: ${(clip.transcript || '').slice(0, 6000)}
+Clip duration (seconds): ${clip.duration ?? 'unknown'}
+Scene descriptions: ${Array.isArray(clip.scene_descriptions) ? clip.scene_descriptions.slice(0, 20).join(' | ') : 'n/a'}
+Target platforms: ${platforms.join(', ')}
+
+For each platform return an entry with: platform, recommended_duration_s, aspect_ratio, caption_strategy,
+hook_at_s (seconds offset where the strongest hook line should land), cta, hashtags (5-10).
+
+Return strict JSON:
+{
+  "optimizations": [
+    {
+      "platform": "...",
+      "recommended_duration_s": <number>,
+      "aspect_ratio": "9:16"|"1:1"|"16:9",
+      "caption_strategy": "...",
+      "hook_at_s": <number>,
+      "cta": "...",
+      "hashtags": ["..."]
+    }
+  ],
+  "notes": "..."
+}`;
+
+    let result;
+    try {
+      const aiResponse = await callOpenRouter(prompt, 'anthropic/claude-3-haiku');
+      result = aiResponse.choices?.[0]?.message?.content;
+    } catch (apiError) {
+      // Mock fallback if OpenRouter unavailable
+      result = JSON.stringify({
+        optimizations: platforms.map((p) => ({
+          platform: p,
+          recommended_duration_s: p === 'linkedin' ? 60 : p === 'shorts' ? 45 : 30,
+          aspect_ratio: p === 'linkedin' ? '1:1' : '9:16',
+          caption_strategy: 'Burned-in bold captions, 1-2 lines, high-contrast',
+          hook_at_s: 0,
+          cta: p === 'linkedin' ? 'Comment your take' : 'Follow for more',
+          hashtags: ['#video', '#shortform', `#${p}`, '#viral', '#trending']
+        })),
+        notes: '(AI unavailable - returning heuristic defaults)'
+      });
+    }
+
+    res.json({ optimization: result, target_platforms: platforms });
+  } catch (error) {
+    console.error('Format-specific optimize error:', error);
+    res.status(500).json({ error: 'Failed to optimize clip for target platforms' });
+  }
+});
+
+// ==================== Apply pass 6: Automated Chaptering (rich) ====================
+// POST /api/ai-analysis/automated-chaptering
+router.post('/automated-chaptering', authMiddleware, async (req, res) => {
+  try {
+    const { transcript, timestamps, video_metadata } = req.body || {};
+    if (!transcript) {
+      return res.status(400).json({ error: 'transcript is required' });
+    }
+
+    const prompt = `You are producing rich chapter markers (YouTube/podcast style) from a video transcript.
+For each chapter return: start_s, end_s, title (under 7 words), summary (1-2 sentences), key_points (3-5 bullets).
+Also return chapter_style which characterizes the pacing/tone you chose (e.g., "tutorial-stepwise", "narrative-arc", "interview-topic-breaks").
+
+Transcript:
+${transcript.slice(0, 8000)}
+Timestamps hint: ${timestamps ? JSON.stringify(timestamps).slice(0, 1500) : 'none provided'}
+Video metadata: ${video_metadata ? JSON.stringify(video_metadata).slice(0, 800) : 'none provided'}
+
+Return strict JSON:
+{
+  "chapters": [
+    {
+      "start_s": <number>,
+      "end_s": <number>,
+      "title": "...",
+      "summary": "...",
+      "key_points": ["..."]
+    }
+  ],
+  "chapter_style": "..."
+}`;
+
+    let result;
+    try {
+      const aiResponse = await callOpenRouter(prompt, 'anthropic/claude-3-haiku');
+      result = aiResponse.choices?.[0]?.message?.content;
+    } catch (apiError) {
+      result = JSON.stringify({
+        chapters: [
+          { start_s: 0, end_s: 60, title: 'Intro & Hook', summary: 'Opening setup and value promise.', key_points: ['Hook', 'Context', 'Promise'] },
+          { start_s: 60, end_s: 240, title: 'Core Content', summary: 'Main argument or walkthrough.', key_points: ['Point 1', 'Point 2', 'Point 3'] },
+          { start_s: 240, end_s: 300, title: 'Wrap & CTA', summary: 'Recap and call to action.', key_points: ['Recap', 'CTA'] }
+        ],
+        chapter_style: 'heuristic-fallback'
+      });
+    }
+
+    res.json({ chapters: result, video_metadata: video_metadata || null });
+  } catch (error) {
+    console.error('Automated chaptering error:', error);
+    res.status(500).json({ error: 'Failed to generate automated chapters' });
+  }
+});
+
 // Delete AI analysis
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {

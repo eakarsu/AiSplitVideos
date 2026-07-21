@@ -25,9 +25,9 @@ router.post('/login', async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user.id, email: user.email },
+      { sub: String(user.id), id: user.id, email: user.email, role: user.role || 'user', tenantId: process.env.GOVERNANCE_TENANT_ID, subjectIds: [`user:${user.id}`] },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN }
+      { algorithm: 'HS256', expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
     );
 
     res.json({
@@ -65,9 +65,9 @@ router.post('/register', async (req, res) => {
 
     const user = result.rows[0];
     const token = jwt.sign(
-      { id: user.id, email: user.email },
+      { sub: String(user.id), id: user.id, email: user.email, role: user.role || 'user', tenantId: process.env.GOVERNANCE_TENANT_ID, subjectIds: [`user:${user.id}`] },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN }
+      { algorithm: 'HS256', expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
     );
 
     res.status(201).json({ token, user });
@@ -94,14 +94,6 @@ router.get('/me', authMiddleware, async (req, res) => {
     console.error('Get user error:', error);
     res.status(500).json({ error: 'Failed to get user' });
   }
-});
-
-// Get demo credentials
-router.get('/demo-credentials', (req, res) => {
-  res.json({
-    email: process.env.DEMO_EMAIL || 'demo@aisplitvideo.com',
-    password: process.env.DEMO_PASSWORD || 'demo123456'
-  });
 });
 
 module.exports = router;

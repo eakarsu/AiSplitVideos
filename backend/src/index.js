@@ -3,7 +3,10 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const http = require('http');
+const jwt = require('jsonwebtoken');
 const { initializeSocket } = require('./services/socketService');
+const db = require('./db');
+const governanceRouter = require('../governance');
 
 const authRoutes = require('./routes/auth');
 const videoRoutes = require('./routes/videos');
@@ -25,6 +28,13 @@ const auditLogRoutes = require('./routes/auditLog');
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3001;
+const signedAccess = (req, res, next) => {
+  const secret = process.env.JWT_SECRET || '';
+  const token = req.headers.authorization && req.headers.authorization.match(/^Bearer (.+)$/)?.[1];
+  if (secret.length < 32) return res.status(503).json({ error: 'secure JWT configuration required' });
+  try { const claims = jwt.verify(token || '', secret, { algorithms: ['HS256'] }); if (!claims.tenantId || !claims.role || !Array.isArray(claims.subjectIds)) throw new Error('claims'); req.user = claims; next(); }
+  catch (_) { res.status(401).json({ error: 'signed tenant, role, and subject scope required' }); }
+};
 
 // Initialize Socket.io
 initializeSocket(server);
@@ -38,10 +48,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Static files for uploads
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+app.use('/uploads', signedAccess, express.static(path.join(__dirname, '../uploads')));
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/governance', governanceRouter);
+app.use('/api', signedAccess);
 app.use('/api/videos', videoRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/split-jobs', splitJobRoutes);
@@ -66,25 +79,21 @@ app.get('/api/health', (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!', message: err.message });
+  res.status(500).json({ error: 'Internal server error' });
 });
 
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log('WebSocket server initialized');
-});
-app.use('/api/viral-moment-detection', require('./routes/viralMomentDetection')); app.use('/api/format-clip-optimizer', require('./routes/formatClipOptimizer')); app.use('/api/auto-chaptering', require('./routes/autoChaptering')); app.use('/api/speaker-diarization', require('./routes/speakerDiarization')); app.use('/api/batch-processing-agent', require('./routes/batchProcessingAgent')); app.use('/api/publisher-integrations', require('./routes/publisherIntegrations'));
+if (process.env.ENABLE_GENERATED_FEATURES === 'true' && process.env.NODE_ENV !== 'production') {
+  app.use('/api/generated/viral-moment-detection', require('./routes/viralMomentDetection'));
+  app.use('/api/generated/custom-views', require('./routes/customViews'));
+}
 
-// === Batch 08 Gaps & Frontend Mounts ===
-app.use('/api/gap-no-ai-driven-highlight-detection-endpoint-frontend-stub-exists', require('./routes/gapNoAiDrivenHighlightDetectionEndpointFrontendStubExists'));
-app.use('/api/gap-no-ai-powered-subtitle-caption-optimization-endpoint', require('./routes/gapNoAiPoweredSubtitleCaptionOptimizationEndpoint'));
-app.use('/api/gap-no-ai-scene-change-detection-backend', require('./routes/gapNoAiSceneChangeDetectionBackend'));
-app.use('/api/gap-ai-surface-area-is-modest-6-endpoints-relative', require('./routes/gapAiSurfaceAreaIsModest6EndpointsRelative'));
-app.use('/api/gap-no-integrations-with-youtube-tiktok-instagram-for-direct', require('./routes/gapNoIntegrationsWithYoutubeTiktokInstagramForDirect'));
-app.use('/api/gap-no-subtitle-caption-editing-ui-in-backend', require('./routes/gapNoSubtitleCaptionEditingUiInBackend'));
-app.use('/api/gap-no-watermarking-or-branding-controls', require('./routes/gapNoWatermarkingOrBrandingControls'));
-app.use('/api/gap-no-public-api-for-third-party-integrations', require('./routes/gapNoPublicApiForThirdPartyIntegrations'));
-app.use('/api/gap-no-webhooks-for-job-completion-notifications', require('./routes/gapNoWebhooksForJobCompletionNotifications'));
-
-// === Custom Views (Video Views) ===
-app.use('/api/custom-views', require('./routes/customViews'));
+async function startServer() {
+  try {
+    await db.query('SELECT 1');
+    server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  } catch (_) {
+    console.error('Database readiness check failed');
+    process.exitCode = 1;
+  }
+}
+startServer();

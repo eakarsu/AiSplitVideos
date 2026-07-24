@@ -54,6 +54,7 @@ app.use('/uploads', signedAccess, express.static(path.join(__dirname, '../upload
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/governance', governanceRouter);
+app.use('/api/ai', require('./routes/applicationAI'));
 app.use('/api', signedAccess);
 app.use('/api/videos', videoRoutes);
 app.use('/api/projects', projectRoutes);

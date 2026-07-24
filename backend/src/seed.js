@@ -3,6 +3,12 @@ const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const { pool } = require('./db');
 
+function requireDemoPassword() {
+  const password = process.env.DEMO_PASSWORD || process.env.SEED_DEMO_PASSWORD || process.env.DEMO_SEED_PASSWORD || '';
+  if (password.length < 12 || password.length > 1024) throw new Error('DEMO_PASSWORD must contain 12-1024 characters');
+  return password;
+}
+
 const seed = async () => {
   const client = await pool.connect();
 
@@ -27,7 +33,7 @@ const seed = async () => {
     const userId = userResult.rows[0].id;
 
     // Create a second user for variety
-    const hashedPassword2 = await bcrypt.hash('user123456', 10);
+    const hashedPassword2 = await bcrypt.hash(requireDemoPassword(), 10);
     const user2Result = await client.query(`
       INSERT INTO users (email, password, name, avatar_url, email_verified, role)
       VALUES ($1, $2, $3, $4, $5, $6)
@@ -436,7 +442,7 @@ const seed = async () => {
     console.log('Seed completed successfully!');
     console.log('Demo user created:');
     console.log(`  Email: ${process.env.DEMO_EMAIL || 'demo@aisplitvideo.com'}`);
-    console.log(`  Password: ${process.env.DEMO_PASSWORD || 'demo123456'}`);
+    console.log('Demo login users provisioned from the local environment.');
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Seed failed:', error);

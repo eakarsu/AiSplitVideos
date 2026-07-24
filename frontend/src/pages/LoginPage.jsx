@@ -19,8 +19,8 @@ const LoginPage = () => {
       setEmail(res.data.email);
       setPassword(res.data.password);
     } catch {
-      setEmail('demo@aisplitvideo.com');
-      setPassword('demo123456');
+      setEmail(process.env.REACT_APP_DEMO_EMAIL || '');
+      setPassword(process.env.REACT_APP_DEMO_PASSWORD || '');
     }
   };
 

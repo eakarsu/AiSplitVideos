@@ -1,6 +1,12 @@
 import axios from 'axios';
 
-export const API_URL = (typeof window !== 'undefined' && window.__API_BASE_URL__) || process.env.REACT_APP_API_URL || 'http://localhost:3091/api';
+const browserApiUrl = typeof window !== 'undefined' && process.env.REACT_APP_BACKEND_PORT
+  ? `${window.location.protocol}//${window.location.hostname}:${process.env.REACT_APP_BACKEND_PORT}/api`
+  : '';
+export const API_URL = (typeof window !== 'undefined' && window.__API_BASE_URL__)
+  || browserApiUrl
+  || process.env.REACT_APP_API_URL
+  || 'http://localhost:3091/api';
 
 // Create axios instance with default config
 const api = axios.create({

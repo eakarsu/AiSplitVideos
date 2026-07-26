@@ -40,8 +40,23 @@ const signedAccess = (req, res, next) => {
 initializeSocket(server);
 
 // Middleware
+const configuredOrigins = String(process.env.FRONTEND_URL || process.env.CORS_ORIGINS || process.env.CORS_ORIGIN || 'http://localhost:3000')
+  .split(',').map((origin) => origin.trim()).filter(Boolean);
+const localDevelopmentOrigin = (origin) => {
+  if (process.env.NODE_ENV === 'production') return false;
+  try {
+    const url = new URL(origin);
+    const localHost = url.hostname === 'localhost' || url.hostname === '127.0.0.1'
+      || /^10\./.test(url.hostname) || /^192\.168\./.test(url.hostname)
+      || /^172\.(1[6-9]|2\d|3[01])\./.test(url.hostname);
+    return url.protocol === 'http:' && localHost && url.port === String(process.env.FRONTEND_PORT || '');
+  } catch (_) { return false; }
+};
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin(origin, callback) {
+    if (!origin || configuredOrigins.includes(origin) || localDevelopmentOrigin(origin)) return callback(null, true);
+    return callback(new Error(`CORS: origin ${origin} not allowed`));
+  },
   credentials: true
 }));
 app.use(express.json());

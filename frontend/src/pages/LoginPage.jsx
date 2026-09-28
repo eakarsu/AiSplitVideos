@@ -48,7 +48,7 @@ const LoginPage = () => {
         <form onSubmit={handleSubmit}>
           <button type="button" className="btn btn-fill-demo" onClick={handleFillDemo}>
             <Settings size={18} />
-            Fill Demo Credentials
+            Auto Fill Demo Credentials
           </button>
           <div className="form-group">
             <label className="form-label">Email</label>

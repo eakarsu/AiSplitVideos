@@ -1,3 +1,4 @@
+import { useRef as useDemoLoginRef, useState as useDemoLoginState } from 'react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -6,6 +7,9 @@ import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../utils/api';
 
 const LoginPage = () => {
+  const demoLoginLock = useDemoLoginRef(false);
+  const [demoLoginBusy, setDemoLoginBusy] = useDemoLoginState(false);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -24,12 +28,12 @@ const LoginPage = () => {
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e, demoLoginCredentials) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
+      await login((demoLoginCredentials?.email ?? email), (demoLoginCredentials?.password ?? password));
       navigate('/');
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
@@ -46,9 +50,27 @@ const LoginPage = () => {
           <h1>AI Split Videos</h1>
         </div>
         <form onSubmit={handleSubmit}>
-          <button type="button" className="btn btn-fill-demo" onClick={handleFillDemo}>
+          <button disabled={demoLoginBusy} type="button" className="btn btn-fill-demo" onClick={async (event) => {
+ if (demoLoginLock.current) return;
+ demoLoginLock.current = true; setDemoLoginBusy(true);
+ const values = {};
+ const captureDemoValue = (key, value) => { values[key] = value; return value; };
+ try {
+  await (async () => {
+    try {
+      const res = await axios.get(`${API_URL}/auth/demo-credentials`);
+      setEmail(captureDemoValue("email", res.data.email));
+      setPassword(captureDemoValue("password", res.data.password));
+    } catch {
+      setError(captureDemoValue("error", 'Demo credentials are unavailable. Try again shortly.'));
+    }
+  })(event);
+  if (values.error || typeof values.email !== 'string' || !values.email || typeof values.password !== 'string' || !values.password) { setError(typeof values.error === 'string' ? values.error : 'Demo credentials are unavailable.'); return; }
+  await handleSubmit(event, { email: values.email, password: values.password });
+ } finally { demoLoginLock.current = false; setDemoLoginBusy(false); }
+}}>
             <Settings size={18} />
-            Auto Fill Demo Credentials
+            Log In as Demo
           </button>
           <div className="form-group">
             <label className="form-label">Email</label>

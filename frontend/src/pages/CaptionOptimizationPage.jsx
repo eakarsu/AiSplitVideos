@@ -1,3 +1,5 @@
+import FormattedAIReport from "../components/FormattedAIReport.jsx";
+import NativeAIControls from "../components/NativeAIControls.jsx";
 import React, { useState } from 'react';
 import { Wand2 } from 'lucide-react';
 import api from '../utils/api';
@@ -12,20 +14,18 @@ const CaptionOptimizationPage = () => {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const toast = useToast();
+  const captionsExamples = [
+    '1\n00:00:00,000 --> 00:00:04,000\nWelcome to our fictional video editing lesson.\n\n2\n00:00:04,000 --> 00:00:09,000\nOrganize clips and keep captions readable.',
+    '1\n00:00:00,000 --> 00:00:05,000\nMeet our fictional handmade notebook collection.\n\n2\n00:00:05,000 --> 00:00:10,000\nSee how each binding is assembled with care.',
+    '1\n00:00:00,000 --> 00:00:06,000\nThis fictional science project asks a simple question.\n\n2\n00:00:06,000 --> 00:00:12,000\nReview the setup, observations, and limitations.',
+  ];
 
-  const parseOptimization = (raw) => {
-    if (!raw) return null;
-    if (typeof raw === 'object') return raw;
-    if (typeof raw === 'string') {
-      try {
-        const cleaned = raw.replace(/```json|```/g, '').trim();
-        return JSON.parse(cleaned);
-      } catch {
-        return { optimized_captions: raw };
-      }
-    }
-    return null;
-  };
+
+
+  const presets = ['Editing lesson', 'Product story', 'Science project'].map((name, index) => ({ name, fill: () => {
+    setCaptions((value) => value || captionsExamples[index]); setPlatform(['youtube', 'instagram', 'tiktok'][index]); setAudience(['Beginner video editors', 'Small business creators', 'Student storytellers'][index]);
+    return { filled: 3, manual: [] };
+  } }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -43,10 +43,9 @@ const CaptionOptimizationPage = () => {
     }
   };
 
-  const opt = result ? parseOptimization(result.optimization) : null;
 
   return (
-    <div>
+    <NativeAIControls busy={loading} context="SplitVideos" presets={presets}><div>
       <div className="page-header">
         <h1 className="page-title">AI Caption Optimization</h1>
       </div>
@@ -56,12 +55,12 @@ const CaptionOptimizationPage = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
               <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Captions</label>
-              <textarea className="form-input" rows={8} value={captions} onChange={(e) => setCaptions(e.target.value)} placeholder="Paste captions/subtitles to optimize..." required />
+              <textarea data-ai-field={"captions"} className="form-input" rows={8} value={captions} onChange={(e) => setCaptions(e.target.value)} placeholder="Paste captions/subtitles to optimize..." required />
             </div>
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 200 }}>
                 <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Platform</label>
-                <select className="form-input" value={platform} onChange={(e) => setPlatform(e.target.value)}>
+                <select data-ai-field={"platform"} className="form-input" value={platform} onChange={(e) => setPlatform(e.target.value)}>
                   <option value="youtube">YouTube</option>
                   <option value="tiktok">TikTok</option>
                   <option value="instagram">Instagram</option>
@@ -72,7 +71,7 @@ const CaptionOptimizationPage = () => {
               </div>
               <div style={{ flex: 1, minWidth: 200 }}>
                 <label style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}>Audience</label>
-                <input className="form-input" type="text" value={audience} onChange={(e) => setAudience(e.target.value)} placeholder="e.g. tech-savvy gen-z" />
+                <input data-ai-field={"audience"} className="form-input" type="text" value={audience} onChange={(e) => setAudience(e.target.value)} placeholder="e.g. tech-savvy gen-z" />
               </div>
             </div>
             <button type="submit" className="btn btn-primary" disabled={loading} style={{ alignSelf: 'flex-start' }}>
@@ -90,36 +89,8 @@ const CaptionOptimizationPage = () => {
         </div>
       )}
 
-      {opt && !loading && (
-        <div className="card" style={{ padding: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h2>Optimized Captions</h2>
-            {typeof opt.readability_score !== 'undefined' && (
-              <span className="card-badge">Readability {opt.readability_score}/100</span>
-            )}
-          </div>
-          <pre style={{ whiteSpace: 'pre-wrap', background: '#0f172a08', padding: 16, borderRadius: 6, fontSize: 14 }}>{opt.optimized_captions || ''}</pre>
-
-          {Array.isArray(opt.changes_made) && opt.changes_made.length > 0 && (
-            <>
-              <h3 style={{ marginTop: 20 }}>Changes Made</h3>
-              <ul style={{ paddingLeft: 20 }}>
-                {opt.changes_made.map((c, i) => <li key={i}>{c}</li>)}
-              </ul>
-            </>
-          )}
-
-          {Array.isArray(opt.platform_tips) && opt.platform_tips.length > 0 && (
-            <>
-              <h3 style={{ marginTop: 20 }}>Platform Tips</h3>
-              <ul style={{ paddingLeft: 20 }}>
-                {opt.platform_tips.map((t, i) => <li key={i}>{t}</li>)}
-              </ul>
-            </>
-          )}
-        </div>
-      )}
-    </div>
+      {result && !loading && <FormattedAIReport response={result.optimization ?? result.highlights ?? result.chapters ?? result} title="AI analysis report" />}
+    </div></NativeAIControls>
   );
 };
 

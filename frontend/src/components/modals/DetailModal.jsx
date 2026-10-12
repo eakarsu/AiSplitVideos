@@ -1,3 +1,4 @@
+import FormattedAIReport from "../FormattedAIReport";
 import React, { useState } from 'react';
 import {
   X, Play, Scissors, Eye, Trash2, Plus, Film, Download, Share2, Zap, Brain, FileText, Edit3
@@ -225,7 +226,7 @@ const DetailModal = ({ isOpen, onClose, title, item, type, onAction, onPlay, onD
               {renderField('Confidence', item.confidence_score ? `${(item.confidence_score * 100).toFixed(0)}%` : '-')}
               {renderField('Processing Time', item.processing_time ? `${item.processing_time}s` : '-')}
               {renderField('Input Data', item.input_data ? <pre className="detail-json">{JSON.stringify(item.input_data, null, 2)}</pre> : '-', true)}
-              {renderField('Output Data', item.output_data ? <pre className="detail-json">{JSON.stringify(item.output_data, null, 2)}</pre> : '-', true)}
+              {renderField('Output Data', item.output_data ? <FormattedAIReport response={item.output_data} /> : '-', true)}
               {renderField('Error', item.error_message || '-', true)}
               {renderField('Created', formatDate(item.created_at))}
             </div>

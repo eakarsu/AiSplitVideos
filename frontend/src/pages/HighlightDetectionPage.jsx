@@ -1,3 +1,5 @@
+import FormattedAIReport from "../components/FormattedAIReport.jsx";
+import NativeAIControls from "../components/NativeAIControls.jsx";
 import React, { useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import api from '../utils/api';
@@ -12,21 +14,18 @@ const HighlightDetectionPage = () => {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const toast = useToast();
+  const examples = [
+    'Fictional training transcript, 120 seconds: 00:00 Welcome to a beginner video editing lesson. 00:20 Organize source clips by topic. 00:50 Cut pauses while retaining meaning. 01:20 Add readable captions. 01:50 Review permissions and export a draft for review.',
+    'Fictional training transcript, 180 seconds: 00:00 A small business introduces its handmade notebooks. 00:30 Show the binding process. 01:00 Explain recycled materials without unverified claims. 01:45 Demonstrate the product. 02:30 Invite viewers to review the catalog.',
+    'Fictional training transcript, 240 seconds: 00:00 A student explains a science fair project. 00:40 Describe the question. 01:20 Show the experimental setup. 02:10 Explain illustrative results and limitations. 03:10 Summarize the lessons and ask for feedback.',
+  ];
 
-  const parseHighlights = (raw) => {
-    if (!raw) return [];
-    if (Array.isArray(raw)) return raw;
-    if (typeof raw === 'string') {
-      try {
-        const cleaned = raw.replace(/```json|```/g, '').trim();
-        const parsed = JSON.parse(cleaned);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  };
+
+
+  const presets = ['Editing lesson', 'Product story', 'Science project'].map((name, index) => ({ name, fill: () => {
+    setTranscript((value) => value || examples[index]); setMaxHighlights([3, 5, 8][index]);
+    return { filled: 2, manual: videoId ? [] : ['an existing Video ID if you want to link this transcript to a real source'] };
+  } }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -48,10 +47,9 @@ const HighlightDetectionPage = () => {
     }
   };
 
-  const highlights = result ? parseHighlights(result.highlights) : [];
 
   return (
-    <div>
+    <NativeAIControls busy={loading} context="SplitVideos" presets={presets}><div>
       <div className="page-header">
         <h1 className="page-title">AI Highlight Detection</h1>
       </div>
@@ -86,36 +84,8 @@ const HighlightDetectionPage = () => {
         </div>
       )}
 
-      {result && !loading && (
-        <div>
-          <h2 style={{ marginBottom: 12 }}>Highlights ({highlights.length})</h2>
-          {highlights.length === 0 ? (
-            <div className="card" style={{ padding: 16 }}>
-              <p>No structured highlights returned. Raw response:</p>
-              <pre style={{ whiteSpace: 'pre-wrap', fontSize: 13 }}>{typeof result.highlights === 'string' ? result.highlights : JSON.stringify(result.highlights, null, 2)}</pre>
-            </div>
-          ) : (
-            <div className="cards-grid">
-              {highlights.map((h, i) => (
-                <div key={i} className="card">
-                  <div className="card-content">
-                    <div className="card-header-row">
-                      <h3 className="card-title">{h.title || `Highlight ${i + 1}`}</h3>
-                      {typeof h.viral_potential !== 'undefined' && <span className="card-badge">{h.viral_potential}/100</span>}
-                    </div>
-                    <p className="card-description">{h.rationale}</p>
-                    <div className="card-meta">
-                      <span>Start: {h.start_time}s</span>
-                      <span>End: {h.end_time}s</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+      {result && !loading && <FormattedAIReport response={result.optimization ?? result.highlights ?? result.chapters ?? result} title="AI analysis report" />}
+    </div></NativeAIControls>
   );
 };
 

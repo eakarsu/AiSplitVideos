@@ -1,3 +1,5 @@
+import FormattedAIReport from "../components/FormattedAIReport.jsx";
+import NativeAIControls from "../components/NativeAIControls.jsx";
 import React, { useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import api from '../utils/api';
@@ -12,17 +14,18 @@ const AutoChapterPage = () => {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const toast = useToast();
+  const examples = [
+    'Fictional training transcript, 120 seconds: 00:00 Welcome to a beginner video editing lesson. 00:20 Organize source clips by topic. 00:50 Cut pauses while retaining meaning. 01:20 Add readable captions. 01:50 Review permissions and export a draft for review.',
+    'Fictional training transcript, 180 seconds: 00:00 A small business introduces its handmade notebooks. 00:30 Show the binding process. 01:00 Explain recycled materials without unverified claims. 01:45 Demonstrate the product. 02:30 Invite viewers to review the catalog.',
+    'Fictional training transcript, 240 seconds: 00:00 A student explains a science fair project. 00:40 Describe the question. 01:20 Show the experimental setup. 02:10 Explain illustrative results and limitations. 03:10 Summarize the lessons and ask for feedback.',
+  ];
 
-  const parseChapters = (raw) => {
-    if (!raw) return null;
-    if (typeof raw === 'object') return raw;
-    try {
-      const cleaned = String(raw).replace(/```json|```/g, '').trim();
-      return JSON.parse(cleaned);
-    } catch {
-      return null;
-    }
-  };
+
+
+  const presets = ['Editing lesson', 'Product story', 'Science project'].map((name, index) => ({ name, fill: () => {
+    setTranscript((value) => value || examples[index]); setTargetChapterCount([3, 5, 8][index]);
+    return { filled: 2, manual: videoId ? [] : ['an existing Video ID if you want to link this transcript to a real source'] };
+  } }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,10 +50,9 @@ const AutoChapterPage = () => {
     }
   };
 
-  const parsed = result ? parseChapters(result.chapters) : null;
 
   return (
-    <div>
+    <NativeAIControls busy={loading} context="SplitVideos" presets={presets}><div>
       <div className="page-header">
         <h1 className="page-title">Automated Chaptering</h1>
       </div>
@@ -85,25 +87,8 @@ const AutoChapterPage = () => {
         </div>
       )}
 
-      {result && !loading && (
-        <div className="card" style={{ padding: 16 }}>
-          <h2 style={{ marginBottom: 12 }}>Chapters</h2>
-          {parsed && Array.isArray(parsed.chapters) ? (
-            <ol style={{ paddingLeft: 20 }}>
-              {parsed.chapters.map((c, i) => (
-                <li key={i} style={{ marginBottom: 6 }}>
-                  <strong>{Math.floor((c.start_time || 0) / 60)}:{String((c.start_time || 0) % 60).padStart(2, '0')}</strong> &mdash; {c.title}
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <pre style={{ whiteSpace: 'pre-wrap', fontSize: 13 }}>
-              {typeof result.chapters === 'string' ? result.chapters : JSON.stringify(result.chapters, null, 2)}
-            </pre>
-          )}
-        </div>
-      )}
-    </div>
+      {result && !loading && <FormattedAIReport response={result.optimization ?? result.highlights ?? result.chapters ?? result} title="AI analysis report" />}
+    </div></NativeAIControls>
   );
 };
 

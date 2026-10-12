@@ -1,3 +1,4 @@
+import AIReportLibrary from "../AIReportLibrary";
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -104,7 +105,7 @@ const Layout = ({ children }) => {
             Logout
           </div>
         </nav>
-      </aside>
+      <AIReportLibrary /></aside>
 
       <main className="main-content">
         {/* Top bar with search and notification bell */}

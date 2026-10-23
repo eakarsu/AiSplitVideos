@@ -86,6 +86,7 @@ app.use('/api/email-verification', emailVerificationRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/audit-log', auditLogRoutes);
+app.use('/api/wave50c', require('./routes/wave50c'));
 
 // Health check
 app.get('/api/health', (req, res) => {
